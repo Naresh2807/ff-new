@@ -6,7 +6,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL:
-    "https://ff-eymc.onrender.com/api",
+    "https://ff-eymc.onrender.com/api/recipes",
   withCredentials: false,
 });
 
