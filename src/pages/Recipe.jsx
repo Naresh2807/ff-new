@@ -232,15 +232,16 @@ function Recipe() {
   Your browser does not support the video tag.
 </video>
           ) : (
-            <img
-              src={imageUrl}
-              alt={recipe.title}
-              className="w-full h-full object-cover"
-              // ✅ Problem 4 – use inline placeholder data URI
-              onError={(e) => {
-                e.target.src = PLACEHOLDER_IMAGE;
-              }}
-            />
+           <img
+  src={imageUrl}
+  alt={recipe.title}
+  className="w-full h-full object-cover"
+  loading="lazy"
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = PLACEHOLDER_IMAGE;
+  }}
+/>
           )}
 
           {/* Video overlay */}
