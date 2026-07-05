@@ -1,12 +1,17 @@
 import axios from "axios";
 
 // ==========================================
+// Base URL
+// ==========================================
+
+const BASE_URL = "https://ff-eymc.onrender.com/api";
+
+// ==========================================
 // Axios Instance
 // ==========================================
 
 const API = axios.create({
-  baseURL:
-    "https://ff-eymc.onrender.com/api/recipes",
+  baseURL: BASE_URL,
   withCredentials: false,
 });
 
@@ -17,9 +22,11 @@ const API = axios.create({
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -30,12 +37,11 @@ API.interceptors.request.use(
 // ==========================================
 
 API.interceptors.response.use(
-  (response) => response.data,    // 👈  EXTRACT DATA HERE
+  (response) => response.data,
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || "";
 
-    // Only logout when protected endpoints fail
     if (
       status === 401 &&
       (
@@ -76,13 +82,17 @@ export const getProfile = () =>
 
 export const updateProfile = (data) => {
   const formData = new FormData();
+
   Object.keys(data).forEach((key) => {
     if (data[key] !== undefined && data[key] !== null) {
       formData.append(key, data[key]);
     }
   });
+
   return API.put("/profile", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 };
 
@@ -98,6 +108,7 @@ export const getRecipe = (id) =>
 
 export const createRecipe = (data) => {
   const formData = new FormData();
+
   Object.keys(data).forEach((key) => {
     if (data[key] !== undefined && data[key] !== null) {
       if (
@@ -111,13 +122,17 @@ export const createRecipe = (data) => {
       }
     }
   });
+
   return API.post("/recipes", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 };
 
 export const updateRecipe = (id, data) => {
   const formData = new FormData();
+
   Object.keys(data).forEach((key) => {
     if (data[key] !== undefined && data[key] !== null) {
       if (
@@ -131,8 +146,11 @@ export const updateRecipe = (id, data) => {
       }
     }
   });
+
   return API.put(`/recipes/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
 };
 
