@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getRecipes } from '../api/api';
 import RecipeCard from '../components/RecipeCard';
 import SearchBar from '../components/SearchBar';
@@ -29,7 +29,8 @@ function Home() {
   });
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchRecipes = async (page = 1) => {
+  // Memoize fetch function to avoid unnecessary re‑creation
+  const fetchRecipes = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       const params = {
@@ -53,11 +54,12 @@ function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]); // Re‑create when filters change
 
+  // Fetch when filters change (page resets to 1 automatically)
   useEffect(() => {
-    fetchRecipes();
-  }, [filters]);
+    fetchRecipes(1);
+  }, [fetchRecipes]); // fetchRecipes is stable thanks to useCallback
 
   const handleSearch = (query) => {
     setFilters(prev => ({ ...prev, search: query }));
@@ -162,7 +164,7 @@ function Home() {
       {error ? (
         <div className="text-center py-12">
           <p className="text-red-500">{error}</p>
-          <button onClick={() => fetchRecipes()} className="btn-primary mt-4">
+          <button onClick={() => fetchRecipes(1)} className="btn-primary mt-4">
             Retry
           </button>
         </div>
