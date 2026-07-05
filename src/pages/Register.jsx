@@ -11,39 +11,120 @@ function Register({ onLogin }) {
     password: '',
     confirmPassword: ''
   });
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear field errors when typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (apiError) setApiError('');
+  };
+
+  const validate = () => {
+    const errors = {};
+    const { name, email, password, confirmPassword } = formData;
+
+    if (!name.trim()) errors.name = 'Full name is required';
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+    if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setLoading(true);
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
+    setApiError('');
 
     try {
-      const { name, email, password } = formData;
-      const response = await registerUser({ name, email, password });
-      const { user, token } = response.data;
-      onLogin(token, user);
-      navigate('/');
+      // Build the payload exactly as your backend expects
+      // Common variations: { name, email, password } or { fullName, email, password }
+      // Adjust below if your backend expects different field names
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      };
+
+      const response = await registerUser(payload);
+      
+      // Handle different response structures gracefully
+      let user = null;
+      let token = null;
+
+      if (response.data) {
+        // If response.data contains user and token directly
+        user = response.data.user || response.data.userData || response.data;
+        token = response.data.token || response.data.accessToken;
+      } else {
+        user = response.user || response;
+        token = response.token || response.accessToken;
+      }
+
+      // If token is missing, registration might have succeeded without auto-login
+      if (!token && user) {
+        // Redirect to login page with a success message
+        navigate('/login?registered=true');
+        return;
+      }
+
+      // Auto-login: call the parent onLogin and navigate home
+      if (token && user) {
+        onLogin(token, user);
+        navigate('/');
+      } else {
+        // Unexpected response – fallback to redirect to login
+        navigate('/login?registered=true');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+      // Extract meaningful error message
+      let errorMsg = 'Registration failed. Please try again.';
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.response?.data?.errors) {
+        // Handle mongoose/express-validator errors
+        const errors = err.response.data.errors;
+        if (Array.isArray(errors)) {
+          const firstError = errors[0]?.msg || errors[0]?.message;
+          if (firstError) errorMsg = firstError;
+          // Map field-specific errors
+          errors.forEach((e) => {
+            if (e.path) setFieldErrors((prev) => ({ ...prev, [e.path]: e.msg || e.message }));
+          });
+        } else if (typeof errors === 'object') {
+          // If errors is an object with field keys
+          const fieldKeys = Object.keys(errors);
+          fieldKeys.forEach((key) => {
+            setFieldErrors((prev) => ({ ...prev, [key]: errors[key] }));
+          });
+          // Display first field error as general message
+          const firstField = fieldKeys[0];
+          if (firstField) errorMsg = errors[firstField];
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setApiError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -61,9 +142,10 @@ function Register({ onLogin }) {
           </p>
         </div>
 
-        {error && (
+        {/* General API error */}
+        {apiError && (
           <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-6 text-sm border border-red-200">
-            {error}
+            {apiError}
           </div>
         )}
 
@@ -78,11 +160,14 @@ function Register({ onLogin }) {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="input-field pl-10"
+                className={`input-field pl-10 ${fieldErrors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="John Doe"
                 autoComplete="name"
               />
             </div>
+            {fieldErrors.name && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+            )}
           </div>
 
           <div>
@@ -95,11 +180,14 @@ function Register({ onLogin }) {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="input-field pl-10"
+                className={`input-field pl-10 ${fieldErrors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="you@example.com"
                 autoComplete="email"
               />
             </div>
+            {fieldErrors.email && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -112,12 +200,15 @@ function Register({ onLogin }) {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="input-field pl-10"
+                className={`input-field pl-10 ${fieldErrors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="•••••••• (min 6 chars)"
                 autoComplete="new-password"
                 minLength="6"
               />
             </div>
+            {fieldErrors.password && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+            )}
           </div>
 
           <div>
@@ -130,11 +221,14 @@ function Register({ onLogin }) {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="input-field pl-10"
+                className={`input-field pl-10 ${fieldErrors.confirmPassword ? 'border-red-500 focus:ring-red-500' : ''}`}
                 placeholder="••••••••"
                 autoComplete="new-password"
               />
             </div>
+            {fieldErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+            )}
           </div>
 
           <button
