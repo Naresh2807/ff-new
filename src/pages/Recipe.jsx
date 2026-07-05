@@ -52,40 +52,40 @@ function Recipe() {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   const fetchRecipe = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const recipeData = await getRecipe(id);
+      const recipeData = await getRecipe(id);
 
-    console.log("Recipe:", recipeData);
+      console.log("Recipe:", recipeData);
 
-    setRecipe(recipeData);
-    setIsLiked(recipeData.isLiked || false);
-    setLikesCount(recipeData.likes?.length || 0);
-    setUserRating(recipeData.userRating || null);
+      setRecipe(recipeData);
+      setIsLiked(recipeData.isLiked || false);
+      setLikesCount(recipeData.likes?.length || 0);
+      setUserRating(recipeData.userRating || null);
 
-    if (isAuthenticated) {
-      try {
-        const fav = await checkFavorite(id);
-        setIsFavorite(fav.isFavorite);
-      } catch (err) {
-        console.error(err);
+      if (isAuthenticated) {
+        try {
+          const fav = await checkFavorite(id);
+          setIsFavorite(fav.isFavorite);
+        } catch (err) {
+          console.error(err);
+        }
       }
-    }
 
-    setError(null);
-  } catch (err) {
-    console.error("Error fetching recipe:", err);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching recipe:", err);
 
-    if (err.response?.status === 404) {
-      setError("Recipe not found");
-    } else {
-      setError(err.response?.data?.message || "Unable to load recipe.");
+      if (err.response?.status === 404) {
+        setError("Recipe not found");
+      } else {
+        setError(err.response?.data?.message || "Unable to load recipe.");
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchRecipe();
@@ -221,27 +221,26 @@ function Recipe() {
         {/* Image / Video */}
         <div className="relative h-80 md:h-96 bg-gray-200">
           {showVideo && recipe.video ? (
-<video
-  controls
-  autoPlay
-  playsInline
-  preload="metadata"
-  className="w-full h-full object-cover"
->
-  <source src={videoUrl} type="video/mp4" />
-  Your browser does not support the video tag.
-</video>
+            <video
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-cover"
+            >
+              <source src={videoUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
           ) : (
-           <img
-  src={imageUrl}
-  alt={recipe.title}
-  className="w-full h-full object-cover"
-  loading="lazy"
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src = PLACEHOLDER_IMAGE;
-  }}
-/>
+            <img
+              src={imageUrl}
+              alt={recipe.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = PLACEHOLDER_IMAGE;
+              }}
+            />
           )}
 
           {/* Video overlay */}
