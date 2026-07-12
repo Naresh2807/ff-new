@@ -29,11 +29,6 @@ import {
 
 const BASE_URL = (import.meta.env.VITE_API_URL || "https://ff-wcfj.onrender.com/api").replace("/api", "");
 
-const imageUrl = useMemo(
-  () => (recipe?.image ? `${BASE_URL}${recipe.image}` : PLACEHOLDER_IMAGE),
-  [recipe?.image]
-);
-
 const PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='60' text-anchor='middle' dy='.3em' fill='%239ca3af'%3E🍽️%3C/text%3E%3C/svg%3E";
 
@@ -155,30 +150,23 @@ function Recipe() {
     }
   };
 
-  // ✅ FIXED: Optimistic favorite toggle
+  // Optimistic favorite toggle
   const handleFavorite = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
-    // 1. Save previous state and toggle optimistically
     const previousState = isFavorite;
     setIsFavorite(!isFavorite);
 
     try {
-      // 2. Call the API
       const res = await toggleFavorite(id);
-
-      // 3. Extract the new favorite status (handles both `res.isFavorite` and `res.data.isFavorite`)
       const newFavoriteStatus = res.isFavorite ?? res.data?.isFavorite;
-
-      // 4. If the server returned a value, update the state (in case of race or mismatch)
       if (newFavoriteStatus !== undefined && newFavoriteStatus !== !previousState) {
         setIsFavorite(newFavoriteStatus);
       }
     } catch (err) {
-      // 5. Revert on error
       setIsFavorite(previousState);
       console.error('Error toggling favorite:', err);
       alert('Failed to update favorites. Please try again.');
