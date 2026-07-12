@@ -49,15 +49,22 @@ function Recipe() {
   const isAuthenticated = !!localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // Memoized values for performance
-  const imageUrl = useMemo(
-    () => (recipe?.image ? `${BASE_URL}${recipe.image}` : PLACEHOLDER_IMAGE),
-    [recipe?.image]
-  );
-  const videoUrl = useMemo(
-    () => (recipe?.video ? `${BASE_URL}${recipe.video}` : ''),
-    [recipe?.video]
-  );
+  // ✅ FIXED: handle both relative and absolute image URLs
+  const imageUrl = useMemo(() => {
+    if (!recipe?.image) return PLACEHOLDER_IMAGE;
+    // If already an absolute URL, use it directly
+    if (recipe.image.startsWith('http')) return recipe.image;
+    // Otherwise, prepend the base URL
+    return `${BASE_URL}${recipe.image}`;
+  }, [recipe?.image]);
+
+  // Video URL – similar handling (assuming it can also be absolute)
+  const videoUrl = useMemo(() => {
+    if (!recipe?.video) return '';
+    if (recipe.video.startsWith('http')) return recipe.video;
+    return `${BASE_URL}${recipe.video}`;
+  }, [recipe?.video]);
+
   const displayRating = useMemo(
     () =>
       recipe?.averageRating != null
@@ -113,14 +120,13 @@ function Recipe() {
     fetchRecipe();
   }, [fetchRecipe]);
 
-  // ✅ FIXED: handleLike – API returns data directly, not response.data
   const handleLike = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     try {
-      const data = await toggleLike(id); // data is the response body
+      const data = await toggleLike(id); // data is the response body (interceptor returns data)
       setIsLiked(data.isLiked);
       const newCount = Array.isArray(data.likes) ? data.likes.length : data.likes;
       setLikesCount(newCount);
@@ -150,7 +156,6 @@ function Recipe() {
     }
   };
 
-  // ✅ FIXED: handleFavorite – API returns data directly, not response.data
   const handleFavorite = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -161,7 +166,7 @@ function Recipe() {
     setIsFavorite(!isFavorite);
 
     try {
-      const res = await toggleFavorite(id); // res is the data object
+      const res = await toggleFavorite(id);
       const newFavoriteStatus = res.isFavorite;
       if (newFavoriteStatus !== undefined && newFavoriteStatus !== !previousState) {
         setIsFavorite(newFavoriteStatus);
