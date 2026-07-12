@@ -113,14 +113,14 @@ function Recipe() {
     fetchRecipe();
   }, [fetchRecipe]);
 
+  // ✅ FIXED: handleLike – API returns data directly, not response.data
   const handleLike = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     try {
-      const response = await toggleLike(id);
-      const data = response.data;
+      const data = await toggleLike(id); // data is the response body
       setIsLiked(data.isLiked);
       const newCount = Array.isArray(data.likes) ? data.likes.length : data.likes;
       setLikesCount(newCount);
@@ -150,7 +150,7 @@ function Recipe() {
     }
   };
 
-  // Optimistic favorite toggle
+  // ✅ FIXED: handleFavorite – API returns data directly, not response.data
   const handleFavorite = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -161,8 +161,8 @@ function Recipe() {
     setIsFavorite(!isFavorite);
 
     try {
-      const res = await toggleFavorite(id);
-      const newFavoriteStatus = res.isFavorite ?? res.data?.isFavorite;
+      const res = await toggleFavorite(id); // res is the data object
+      const newFavoriteStatus = res.isFavorite;
       if (newFavoriteStatus !== undefined && newFavoriteStatus !== !previousState) {
         setIsFavorite(newFavoriteStatus);
       }
