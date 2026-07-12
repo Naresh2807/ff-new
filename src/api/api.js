@@ -4,7 +4,8 @@ import axios from "axios";
 // Base URL
 // ==========================================
 
-const BASE_URL = "https://ff-eymc.onrender.com/api";
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "https://ff-wcfj.onrender.com/api";
 
 // ==========================================
 // Axios Instance
@@ -13,6 +14,9 @@ const BASE_URL = "https://ff-eymc.onrender.com/api";
 const API = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // ==========================================
@@ -27,6 +31,10 @@ API.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    console.log(
+      `➡️ ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`
+    );
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -37,8 +45,13 @@ API.interceptors.request.use(
 // ==========================================
 
 API.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    console.log("✅ Response:", response.data);
+    return response.data;
+  },
   (error) => {
+    console.error("❌ API Error:", error.response?.data || error.message);
+
     const status = error.response?.status;
     const url = error.config?.url || "";
 
@@ -80,21 +93,12 @@ export const getCurrentUser = () =>
 export const getProfile = () =>
   API.get("/profile");
 
-export const updateProfile = (data) => {
-  const formData = new FormData();
-
-  Object.keys(data).forEach((key) => {
-    if (data[key] !== undefined && data[key] !== null) {
-      formData.append(key, data[key]);
-    }
-  });
-
-  return API.put("/profile", formData, {
+export const updateProfile = (formData) =>
+  API.put("/profile", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
-};
 
 // ==========================================
 // RECIPES
@@ -106,53 +110,19 @@ export const getRecipes = (params = {}) =>
 export const getRecipe = (id) =>
   API.get(`/recipes/${id}`);
 
-export const createRecipe = (data) => {
-  const formData = new FormData();
-
-  Object.keys(data).forEach((key) => {
-    if (data[key] !== undefined && data[key] !== null) {
-      if (
-        key === "ingredients" ||
-        key === "steps" ||
-        key === "dietaryPreference"
-      ) {
-        formData.append(key, JSON.stringify(data[key]));
-      } else {
-        formData.append(key, data[key]);
-      }
-    }
-  });
-
-  return API.post("/recipes", formData, {
+export const createRecipe = (formData) =>
+  API.post("/recipes", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
-};
 
-export const updateRecipe = (id, data) => {
-  const formData = new FormData();
-
-  Object.keys(data).forEach((key) => {
-    if (data[key] !== undefined && data[key] !== null) {
-      if (
-        key === "ingredients" ||
-        key === "steps" ||
-        key === "dietaryPreference"
-      ) {
-        formData.append(key, JSON.stringify(data[key]));
-      } else {
-        formData.append(key, data[key]);
-      }
-    }
-  });
-
-  return API.put(`/recipes/${id}`, formData, {
+export const updateRecipe = (id, formData) =>
+  API.put(`/recipes/${id}`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
-};
 
 export const deleteRecipe = (id) =>
   API.delete(`/recipes/${id}`);
@@ -180,7 +150,7 @@ export const checkFavorite = (id) =>
   API.get(`/favorites/check/${id}`);
 
 // ==========================================
-// MEAL PLANNER
+// MEAL PLANS
 // ==========================================
 
 export const getMealPlans = () =>
@@ -194,9 +164,5 @@ export const deleteMealPlan = (id) =>
 
 export const getShoppingList = () =>
   API.get("/mealplans/shopping-list");
-
-// ==========================================
-// Export Axios Instance
-// ==========================================
 
 export default API;
