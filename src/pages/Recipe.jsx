@@ -1,3 +1,4 @@
+// src/pages/Recipe.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -26,11 +27,7 @@ import {
   Bookmark,
   BookmarkCheck,
 } from 'lucide-react';
-
-const BASE_URL = (import.meta.env.VITE_API_URL || "https://ff-wcfj.onrender.com/api").replace("/api", "");
-
-const PLACEHOLDER_IMAGE =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Crect width='400' height='400' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='60' text-anchor='middle' dy='.3em' fill='%239ca3af'%3E🍽️%3C/text%3E%3C/svg%3E";
+import { getFullImageUrl, PLACEHOLDER_IMAGE } from '../utils/imageUtils';
 
 function Recipe() {
   const { id } = useParams();
@@ -49,22 +46,14 @@ function Recipe() {
   const isAuthenticated = !!localStorage.getItem('token');
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ FIXED: handle both relative and absolute image URLs
-  const imageUrl = useMemo(() => {
-    if (!recipe?.image) return PLACEHOLDER_IMAGE;
-    // If already an absolute URL, use it directly
-    if (recipe.image.startsWith('http')) return recipe.image;
-    // Otherwise, prepend the base URL
-    return `${BASE_URL}${recipe.image}`;
-  }, [recipe?.image]);
-
-  // Video URL – similar handling (assuming it can also be absolute)
-  const videoUrl = useMemo(() => {
-    if (!recipe?.video) return '';
-    if (recipe.video.startsWith('http')) return recipe.video;
-    return `${BASE_URL}${recipe.video}`;
-  }, [recipe?.video]);
-
+  const imageUrl = useMemo(
+    () => (recipe?.image ? getFullImageUrl(recipe.image) : PLACEHOLDER_IMAGE),
+    [recipe?.image]
+  );
+  const videoUrl = useMemo(
+    () => (recipe?.video ? getFullImageUrl(recipe.video) : ''),
+    [recipe?.video]
+  );
   const displayRating = useMemo(
     () =>
       recipe?.averageRating != null
@@ -126,7 +115,7 @@ function Recipe() {
       return;
     }
     try {
-      const data = await toggleLike(id); // data is the response body (interceptor returns data)
+      const data = await toggleLike(id);
       setIsLiked(data.isLiked);
       const newCount = Array.isArray(data.likes) ? data.likes.length : data.likes;
       setLikesCount(newCount);
@@ -322,7 +311,7 @@ function Recipe() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content - same as before, no image changes */}
         <div className="p-6 md:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
