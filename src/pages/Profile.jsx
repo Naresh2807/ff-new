@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { User, Mail, Edit2, Camera, Calendar, BookOpen, Heart } from 'lucide-react';
 import RecipeCard from '../components/RecipeCard';
 import Loader from '../components/Loader';
+import { getFullImageUrl, PLACEHOLDER_IMAGE } from '../utils/imageUtils';
 
 function Profile({ user, setUser }) {
   const [profile, setProfile] = useState(null);
@@ -18,18 +19,22 @@ function Profile({ user, setUser }) {
 
   const fetchProfile = async () => {
     try {
-      const response = await getProfile();
-      setProfile(response.data.user);
-      setRecipes(response.data.recipes || []);
+      const data = await getProfile();
+      // data is the response body (interceptor returns data directly)
+      const userData = data.user || data; // both shapes: { user, recipes } or just the user
+      const recipesData = data.recipes || [];
+      setProfile(userData);
+      setRecipes(recipesData);
       setFormData({
-        name: response.data.user.name || '',
-        bio: response.data.user.bio || ''
+        name: userData.name || '',
+        bio: userData.bio || ''
       });
-      if (response.data.user.profileImage) {
-        setImagePreview(response.data.user.profileImage);
+      if (userData.profileImage) {
+        setImagePreview(getFullImageUrl(userData.profileImage) || PLACEHOLDER_IMAGE);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
+      setError('Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -53,20 +58,26 @@ function Profile({ user, setUser }) {
     setUpdating(true);
     setError('');
     try {
-      const data = {
-        name: formData.name,
-        bio: formData.bio
-      };
+      let payload;
       if (profileImage) {
-        data.profileImage = profileImage;
+        payload = new FormData();
+        payload.append('name', formData.name);
+        payload.append('bio', formData.bio);
+        payload.append('profileImage', profileImage);
+      } else {
+        payload = {
+          name: formData.name,
+          bio: formData.bio
+        };
       }
-      const response = await updateProfile(data);
-      setProfile(response.data.user);
-      setUser(response.data.user);
+
+      const updatedUser = await updateProfile(payload);
+      const newUser = updatedUser.user || updatedUser;
+      setProfile(newUser);
+      setUser(newUser);
       setEditing(false);
       setProfileImage(null);
-      // Refresh profile
-      await fetchProfile();
+      await fetchProfile(); // refresh recipes too
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err.response?.data?.message || 'Failed to update profile');
@@ -76,16 +87,14 @@ function Profile({ user, setUser }) {
   };
 
   if (loading) return <Loader fullScreen />;
-  if (!profile) return null;
+  if (!profile) return <div className="text-center py-8 text-red-500">Profile not found</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Profile header */}
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-primary to-orange-400 h-32" />
         <div className="px-6 pb-6 relative">
           <div className="flex flex-col md:flex-row items-start md:items-end -mt-16">
-            {/* Avatar */}
             <div className="relative">
               <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg">
                 {imagePreview ? (
@@ -104,7 +113,6 @@ function Profile({ user, setUser }) {
               )}
             </div>
 
-            {/* Profile info */}
             <div className="mt-4 md:mt-0 md:ml-6 flex-1">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -139,10 +147,7 @@ function Profile({ user, setUser }) {
                   </div>
                 </div>
                 {!editing ? (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="btn-outline flex items-center space-x-2"
-                  >
+                  <button onClick={() => setEditing(true)} className="btn-outline flex items-center space-x-2">
                     <Edit2 className="w-4 h-4" />
                     <span>Edit Profile</span>
                   </button>
@@ -152,7 +157,7 @@ function Profile({ user, setUser }) {
                       onClick={() => {
                         setEditing(false);
                         setFormData({ name: profile.name, bio: profile.bio });
-                        setImagePreview(profile.profileImage || '');
+                        setImagePreview(profile.profileImage ? getFullImageUrl(profile.profileImage) : '');
                         setProfileImage(null);
                         setError('');
                       }}
@@ -160,22 +165,13 @@ function Profile({ user, setUser }) {
                     >
                       Cancel
                     </button>
-                    <button
-                      onClick={handleUpdate}
-                      disabled={updating}
-                      className="btn-primary flex items-center space-x-2"
-                    >
-                      {updating ? (
-                        <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white" />
-                      ) : (
-                        <span>Save</span>
-                      )}
+                    <button onClick={handleUpdate} disabled={updating} className="btn-primary flex items-center space-x-2">
+                      {updating ? <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white" /> : <span>Save</span>}
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Bio */}
               {editing ? (
                 <textarea
                   value={formData.bio}
@@ -189,15 +185,12 @@ function Profile({ user, setUser }) {
               ) : (
                 <p className="mt-3 text-gray-400 italic">No bio yet</p>
               )}
-              {error && (
-                <p className="text-red-500 text-sm mt-2">{error}</p>
-              )}
+              {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             </div>
           </div>
         </div>
       </div>
 
-      {/* User's recipes */}
       <div className="mt-10">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">My Recipes</h2>
         {recipes.length === 0 ? (
