@@ -9,7 +9,8 @@ import {
   MenuIcon,
   XIcon,
   LogOutIcon,
-  ChefHatIcon
+  ChefHatIcon,
+  LayoutDashboardIcon // ✅ added for admin panel
 } from 'lucide-react';
 
 function Navbar({ isAuthenticated, user, onLogout }) {
@@ -22,14 +23,26 @@ function Navbar({ isAuthenticated, user, onLogout }) {
     setIsMobileMenuOpen(false);
   };
 
+  // Base nav links for authenticated users
+  const authLinks = [
+    { to: '/add-recipe', label: 'Add Recipe', icon: PlusCircleIcon },
+    { to: '/favorites', label: 'Favorites', icon: HeartIcon },
+    { to: '/meal-planner', label: 'Meal Planner', icon: CalendarIcon },
+    { to: '/profile', label: 'Profile', icon: UserIcon },
+  ];
+
+  // Add admin link if user is admin
+  if (user?.role === 'admin') {
+    authLinks.push({
+      to: '/admin',
+      label: 'Admin Panel',
+      icon: LayoutDashboardIcon,
+    });
+  }
+
   const navLinks = [
     { to: '/', label: 'Home', icon: HomeIcon },
-    ...(isAuthenticated ? [
-      { to: '/add-recipe', label: 'Add Recipe', icon: PlusCircleIcon },
-      { to: '/favorites', label: 'Favorites', icon: HeartIcon },
-      { to: '/meal-planner', label: 'Meal Planner', icon: CalendarIcon },
-      { to: '/profile', label: 'Profile', icon: UserIcon },
-    ] : [])
+    ...(isAuthenticated ? authLinks : [])
   ];
 
   return (
