@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom'; // ✅ Use Link for SPA navigation
 import { getMealPlans, createMealPlan, deleteMealPlan, getShoppingList, getRecipes } from '../api/api';
 import { Calendar, Plus, Trash2, ShoppingBag, X } from 'lucide-react';
 import Loader from '../components/Loader';
@@ -23,6 +24,7 @@ function MealPlanner() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Fetch all needed data
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -34,20 +36,19 @@ function MealPlanner() {
         getShoppingList(),
       ]);
 
-      // Directly handle the actual response shapes
-      // getMealPlans() returns an array (or maybe { mealPlans: [...] } – we'll guard both)
-      const plans = Array.isArray(plansRes) ? plansRes : (plansRes.mealPlans || []);
+      // ✅ Extract meal plans – backend returns { success, mealPlans }
+      const plans = plansRes?.mealPlans || [];
       setMealPlans(plans);
 
-      // getRecipes() returns { recipes: [...], pagination: {...} }
-      const recipesList = recipesRes.recipes || [];
+      // ✅ Extract recipes – backend returns { recipes, pagination }
+      const recipesList = recipesRes?.recipes || [];
       setRecipes(recipesList);
 
-      // getShoppingList() returns an array
-      const shoppingItems = Array.isArray(shoppingRes) ? shoppingRes : (shoppingRes.shoppingList || []);
-      setShoppingList(shoppingItems);
+      // ✅ Extract shopping list – backend returns { shoppingList }
+      const items = shoppingRes?.shoppingList || [];
+      setShoppingList(items);
     } catch (err) {
-      console.error('❌ Error fetching meal planner data:', err);
+      console.error('Error fetching meal planner data:', err);
       setError('Failed to load meal planner data. Please try again.');
     } finally {
       setLoading(false);
@@ -57,6 +58,16 @@ function MealPlanner() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Refresh shopping list only (used after add/delete)
+  const refreshShoppingList = useCallback(async () => {
+    try {
+      const res = await getShoppingList();
+      setShoppingList(res?.shoppingList || []);
+    } catch (err) {
+      console.error('Error refreshing shopping list:', err);
+    }
+  }, []);
 
   const handleAddMealPlan = async (e) => {
     e.preventDefault();
@@ -77,24 +88,24 @@ function MealPlanner() {
     }
 
     try {
-      const newPlan = await createMealPlan(formData); // response is the new plan object directly
-      // Ensure we add it to the list (if it has an _id)
+      // ✅ Backend returns { success, mealPlan }
+      const response = await createMealPlan(formData);
+      const newPlan = response.mealPlan; // extract the actual plan
+
       if (newPlan && newPlan._id) {
         setMealPlans((prev) => [newPlan, ...prev]);
         setSuccess('Meal plan added successfully!');
         setShowAddForm(false);
         setFormData({ day: '', breakfast: '', lunch: '', dinner: '' });
-
         // Refresh shopping list
-        const shoppingRes = await getShoppingList();
-        const shoppingItems = Array.isArray(shoppingRes) ? shoppingRes : (shoppingRes.shoppingList || []);
-        setShoppingList(shoppingItems);
+        await refreshShoppingList();
       } else {
         throw new Error('Invalid meal plan response');
       }
     } catch (err) {
-      console.error('❌ Error creating meal plan:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to create meal plan.');
+      console.error('Error creating meal plan:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to create meal plan.';
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -105,24 +116,17 @@ function MealPlanner() {
     try {
       await deleteMealPlan(id);
       setMealPlans((prev) => prev.filter((p) => p._id !== id));
-      // Refresh shopping list
-      const shoppingRes = await getShoppingList();
-      const shoppingItems = Array.isArray(shoppingRes) ? shoppingRes : (shoppingRes.shoppingList || []);
-      setShoppingList(shoppingItems);
+      await refreshShoppingList();
     } catch (err) {
-      console.error('❌ Error deleting meal plan:', err);
+      console.error('Error deleting meal plan:', err);
       alert(err.response?.data?.message || 'Failed to delete meal plan.');
     }
   };
 
+  // ✅ Since meal plan fields are already populated, we just return the meal object.
   const getDayMeal = (plan, type) => {
     const meal = plan[type];
-    if (!meal) return null;
-    // Find full recipe from the recipes list (meal could be an object with _id and title, or just an id)
-    if (typeof meal === 'string') {
-      return recipes.find((r) => r._id === meal) || null;
-    }
-    return recipes.find((r) => r._id === meal._id) || meal;
+    return meal || null; // meal is already a recipe object or null
   };
 
   if (loading) return <Loader fullScreen />;
@@ -306,12 +310,13 @@ function MealPlanner() {
                         {type}:
                       </span>
                       {meal ? (
-                        <a
-                          href={`/recipe/${meal._id}`}
+                        // ✅ Use Link for client‑side navigation
+                        <Link
+                          to={`/recipe/${meal._id}`}
                           className="text-gray-700 hover:text-primary transition-colors truncate"
                         >
                           {meal.title}
-                        </a>
+                        </Link>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
